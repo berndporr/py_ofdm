@@ -20,9 +20,9 @@
 
 import cv2
 import numpy as np
-import random
 import scipy.io.wavfile as wavfile
 import matplotlib.pyplot as plt
+import ofdm_codec
 
 # load the cheesy image
 a = cv2.imread('greytee.png',cv2.IMREAD_GRAYSCALE)
@@ -30,147 +30,19 @@ a = cv2.imread('greytee.png',cv2.IMREAD_GRAYSCALE)
 # the number of lines in the image
 ymax,xmax= np.shape(a)
 
-# the plan is that we generate for every line of the image
-# one symbol, thus, one IFFT
-
-# our inverse FFT has 2048 frequencies
-nIFFT = 2048
-
-# the cyclic prefix is a 1/4 of the length of the symbol
-nCyclic = int(nIFFT*2/4)
-
-# distance between pilots
-pilot_distance = 16
-
-# amplitudes of the pilot carrier at the beginning
-pilot_amplitude = 2
+ofdm = ofdm_codec.OFDM()
 
 # to have some delay before it starts
-offset = nIFFT*3
-
-# total number of complex samples in the timedomain
-nTotal = (nIFFT+nCyclic)*ymax+offset
-
-# first k index used
-k_start = int(nIFFT/2 + nIFFT/4 - nIFFT/pilot_distance/4)
-
-ymin = 0
-# ymax = 1
-
-
-def ofdm_encode(signal,data):
-    # create an empty spectrum with all complex frequency values set to zero
-    spectrum = np.zeros(nIFFT,dtype=complex)
-
-    # we start with a negative frequency and then 
-    # work ourselves up to positive ones
-    # we have 2048 frequency samples and 1024 frequencies we use for the
-    # image
-    k = k_start
-    
-    # set the random number generator to a known start value
-    # will generate always the same sequence from this start value
-    # We xor its value with the grey values from the image to
-    # generate a pseudo random sequence which is called "engery dispersal".
-    random.seed(1)
-    
-    # pilot signal, make it stronger than the payload data
-    # so that it's easy to recognise
-    # we can use it to fine tune the symbol start in the receiver
-    # However, only one pilot won't be enough in a real receiver
-    # because of its periodic nature. We need to scatter them
-    # over the spectrum.
-    
-    # counter for the pilots
-    pilot_counter = pilot_distance/2
-    
-    # we loop through one line in the image
-    for x in range(xmax):
-
-        # get the grey value
-        greyvalue = int(data[x])
-        # greyvalue = int(x % 255)
-        # generate the random number
-        r = int(random.randint(0,255))
-        # xor the grey value with the random number
-        greyvalue = int(greyvalue ^ r)
-
-        # create the bitstream
-        bitstream = np.zeros(8)
-        for bit in range(8):
-            m = 1 << bit
-            testbit = m & greyvalue
-            if testbit > 0:
-                bitstream[bit] = 1
-            else:
-                bitstream[bit] = -1
-
-        # now we have 8 bits which we distribute over four frequency samples
-        # with 4-QAM / QPSK coding
-        for cnum in range(4):
-            # Let's check if we need to insert a pilot
-            pilot_counter = pilot_counter - 1
-            if pilot_counter == 0:
-                pilot_counter = pilot_distance;
-                spectrum[k] = pilot_amplitude
-                k = k + 1
-                if not (k < nIFFT):
-                    k = 0
-            spectrum[k] = complex(bitstream[int(cnum*2)],
-                                  bitstream[int(cnum*2+1)])
-            # increase the frequency index
-            k = k + 1
-            # wrap to positive frequencies once we have reached the last index
-            if not (k < nIFFT):
-                k = 0
-
-    # create one symbol by transforming our frequency samples into
-    # complex timedomain samples
-    complex_symbol = np.fft.ifft(spectrum);
-
-    # create an empty real valued symbol with twice the samples
-    # because we need to interleave real and complex values
-    tx_symbol = np.zeros(len(complex_symbol)*2)
-
-    # now we upsample at factor 2 and interleave
-    # the I and Q signals
-    # This is a digital quadrature modulator where we
-    # interleave the complex signal c(n) as:
-    # +Real(c(n)), +Imag(c(n)), -Real(c(n+1), -Imag(c(n+1))
-    # and then repeat it until we have created our sequence
-    # with twice the number of samples.
-    s = 1;
-    txindex = 0;
-    for smpl in complex_symbol:
-        tx_symbol[txindex] = s * np.real(smpl)
-        txindex = txindex + 1
-        tx_symbol[txindex] = s * np.imag(smpl)
-        txindex = txindex + 1
-        s = s * -1
-
-    # generate cyclic prefix taken from the end of the signal
-    # This is now twice the length because we have two times
-    # more samples, effectively transmitting at twice the
-    # sampling rate
-    cyclicPrefix = tx_symbol[-nCyclic:]
-
-    # add the cyclic prefix to the signal
-    signal = np.concatenate((signal,cyclicPrefix));
-    # add the real valued symbol to the signal
-    signal = np.concatenate((signal,tx_symbol));
-    return signal
-
-
-
+offset = ofdm.nIFFT * 3
 
 # some dummy bytes before we start transmission
 signal = np.zeros(offset)
 
 # loop for the y coordinate, line by line
-for y in range(ymin,ymax):
+for y in range(ymax):
     # get a line from the image
     row = a[y,:]
-    signal = ofdm_encode(signal,row)
+    signal = ofdm.encode(signal,row)
 
 # save it as a wav file to listen to
 wavfile.write('ofdm8000.wav',8000,signal)
@@ -178,7 +50,7 @@ wavfile.write('ofdm8000.wav',8000,signal)
 
 #######################################################################
 # reception
-
+import random
 
 # our image
 rx_image = np.zeros((ymax,xmax))
@@ -192,10 +64,14 @@ s = 1
 rxindex = offset
 
 # loop for the y coordinate
-for y in range(ymin,ymax):
+for y in range(ymax):
 
     # skip cyclic prefix
-    rxindex = rxindex + nCyclic
+    rxindex = rxindex + ofdm.nCyclic
+
+    nIFFT = ofdm.nIFFT
+    k_start = ofdm.k_start
+    pilot_distance = ofdm.pilot_distance
 
     rx_symbol = np.zeros(nIFFT,dtype=complex)
     # demodulate
