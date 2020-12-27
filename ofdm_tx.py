@@ -54,18 +54,11 @@ nTotal = (nIFFT+nCyclic)*ymax+offset
 # first k index used
 k_start = int(nIFFT/2 + nIFFT/4 - nIFFT/pilot_distance/4)
 
-# some dummy bytes before we start transmission
-signal = np.zeros(offset)
-
 ymin = 0
 # ymax = 1
 
-# loop for the y coordinate, line by line
-for y in range(ymin,ymax):
 
-    # get a line from the image
-    row = a[y,:]
-
+def ofdm_encode(signal,data):
     # create an empty spectrum with all complex frequency values set to zero
     spectrum = np.zeros(nIFFT,dtype=complex)
 
@@ -95,7 +88,7 @@ for y in range(ymin,ymax):
     for x in range(xmax):
 
         # get the grey value
-        greyvalue = int(row[x])
+        greyvalue = int(data[x])
         # greyvalue = int(x % 255)
         # generate the random number
         r = int(random.randint(0,255))
@@ -165,6 +158,19 @@ for y in range(ymin,ymax):
     signal = np.concatenate((signal,cyclicPrefix));
     # add the real valued symbol to the signal
     signal = np.concatenate((signal,tx_symbol));
+    return signal
+
+
+
+
+# some dummy bytes before we start transmission
+signal = np.zeros(offset)
+
+# loop for the y coordinate, line by line
+for y in range(ymin,ymax):
+    # get a line from the image
+    row = a[y,:]
+    signal = ofdm_encode(signal,row)
 
 # save it as a wav file to listen to
 wavfile.write('ofdm8000.wav',8000,signal)
