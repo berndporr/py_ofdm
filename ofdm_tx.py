@@ -1,5 +1,3 @@
-#	OFDM transmission and reception with energy dispersal
-#
 #	Copyright (C) 2020 Bernd Porr <mail@berndporr.me.uk>
 
 #	This program is free software; you can redistribute it and/or modify
@@ -16,7 +14,8 @@
 #	along with this program; if not, write to the Free Software
 #	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#       using more than one pilots to eliminate ambiguities.
+# Transmitter and test receiver on the same data
+# Transmits a test grey scale image. Every horizontal line turns into a symbol
 
 import cv2
 import numpy as np
@@ -47,6 +46,9 @@ for y in range(ymax):
 # save it as a wav file to listen to
 wavfile.write('ofdm8000.wav',8000,signal)
 
+plt.figure(1)
+plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
+#plt.show()
 
 #######################################################################
 # reception
@@ -62,5 +64,6 @@ for y in range(ymax):
     row = ofdm.decode(xmax)
     rx_image[y,:] = row
 
+plt.figure(2)
 plt.imshow(rx_image, cmap='gray')
 plt.show()

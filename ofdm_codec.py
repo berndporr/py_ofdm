@@ -217,5 +217,4 @@ class OFDM:
 
             # store it in the image
             data[x] = greyvalue
-            print(greyvalue)
         return data
