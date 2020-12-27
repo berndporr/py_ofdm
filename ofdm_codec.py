@@ -142,19 +142,24 @@ class OFDM:
         return signal
 
 
-    def decode(self,signal,nData):
+    def initDecode(self,signal,offset):
+        self.s = 1
+        self.rxindex = offset
+        self.signal = signal
+
+    def decode(self,nData):
         # skip cyclic prefix
         self.rxindex = self.rxindex + self.nCyclic
 
         rx_symbol = np.zeros(self.nIFFT,dtype=complex)
         # demodulate
         for a in range(self.nIFFT):
-            realpart = s * signal[rxindex]
-            rxindex = rxindex + 1
-            imagpart = s * signal[rxindex]
-            rxindex = rxindex + 1
+            realpart = self.s * self.signal[self.rxindex]
+            self.rxindex = self.rxindex + 1
+            imagpart = self.s * self.signal[self.rxindex]
+            self.rxindex = self.rxindex + 1
             rx_symbol[a] = complex(realpart,imagpart)
-            s = s * -1
+            self.s = self.s * -1
 
         # perform a FFT to get the frequency samples which code our signal as QPSK pairs
         isymbol = np.fft.fft(rx_symbol)
@@ -212,4 +217,5 @@ class OFDM:
 
             # store it in the image
             data[x] = greyvalue
-
+            print(greyvalue)
+        return data
