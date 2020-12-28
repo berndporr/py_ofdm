@@ -48,6 +48,9 @@ for y in range(ymax):
 wavfile.write('ofdm8000.wav',8000,signal)
 
 plt.figure(1)
+plt.title("TX OFDM spectrum")
+plt.xlabel("Normalised frequencies")
+plt.ylabel("Freq-amplitudes")
 plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
 #plt.show()
 
@@ -57,6 +60,7 @@ plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
 # our image
 rx_image = np.empty((ymax,xmax))
 
+# Let's do a sanity check. We cheat here as we know the index of the symbol start.
 ofdm.initDecode(signal,offset)
 
 # loop for the y coordinate

@@ -1,3 +1,6 @@
+"""
+OFDM transmitter and receiver with energy dispersal, pilot tones and cyclic prefix
+"""
 #	OFDM transmission and reception with energy dispersal
 #
 #	Copyright (C) 2020 Bernd Porr <mail@berndporr.me.uk>
@@ -22,8 +25,12 @@ import numpy as np
 import random
 
 class OFDM:
-
     def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256):
+        """
+        nFreqSamples sets the number of frequency coefficients of the FFT. Pilot tones are injected
+        every pilotDistanceInSamples-th frequency sample. The real valued pilot amplitude is pilotAmplitude.
+        For transmission nData bytes are expected in an array.
+        """
         # our inverse FFT has 2048 frequencied
         self.nIFFT = nFreqSamples
 
@@ -42,7 +49,14 @@ class OFDM:
         # first k index used
         self.k_start = int(self.nIFFT/2 + self.nIFFT/4 - self.nIFFT / self.pilot_distance / 4)
 
-    def encode(self,signal,data):
+    def encode(self,signal,data,randomSeed = 1):
+        """
+        Creates an OFDM symbol as QAM = 2 bits per frequency sample. 
+        The signal is a real valued numpy array where the
+        encoded data-stream is appended. The data is an array of bytes.
+        The random seed sets the pseudo random number generator for the
+        engergy dispersal.
+        """
         # create an empty spectrum with all complex frequency values set to zero
         spectrum = np.zeros(self.nIFFT,dtype=complex)
 
@@ -56,7 +70,7 @@ class OFDM:
         # will generate always the same sequence from this start value
         # We xor its value with the grey values from the image to
         # generate a pseudo random sequence which is called "engery dispersal".
-        random.seed(1)
+        random.seed(randomSeed)
         
         # pilot signal, make it stronger than the payload data
         # so that it's easy to recognise
@@ -146,11 +160,22 @@ class OFDM:
 
 
     def initDecode(self,signal,offset):
+        """
+        Starts a decoding process. The signal is the real valued received
+        signal and the decoding start at the index specified by offset.
+        """
         self.s = 1
         self.rxindex = offset
         self.signal = signal
 
     def decode(self):
+        """
+        Decodes one symbol and returns a byte array of the
+        data and the absolute values of the imaginary parts
+        of the pilot tones. The smaller that value the better
+        the symbol start detection, the reception and the jitter 
+        (theoretically zero at perfect reception).
+        """
         # skip cyclic prefix
         self.rxindex = self.rxindex + self.nCyclic
 
@@ -228,10 +253,23 @@ class OFDM:
         return data,imPilots
 
 
-    def findSymbolStartIndex(self, signal, searchrange = 25):
+    def findSymbolStartIndex(self, signal, searchrangecoarse=None, searchrangefine = 25):
+        """
+        Finds the start of the symbol by 1st doing a cross correlation
+        with the cyclic prefix and then it uses the pilot tones.
+        Arguments: the real valued reception signal, the coarse searchrange for
+        the cyclic prefix and the fine one for the pilots.
+        Returns the cross correlation array from the cyclic prefix,
+        the abs values of the imaginary parts of the pilots and the index
+        of the symbol start relative to the signal.
+        """
+        # Set it to some default
+        if not searchrangecoarse:
+            searchrangecoarse = self.nIFFT*5
+            
         # Let find the starting index with the cyclic prefix
         crosscorr = np.array([])
-        for i in range(self.nIFFT*5):
+        for i in range(searchrangecoarse):
             s1 = signal[i:i+self.nCyclic]
             s2 = signal[i+self.nIFFT*2:i+self.nIFFT*2+self.nCyclic]
             cc = np.correlate(s1,s2)
@@ -241,11 +279,11 @@ class OFDM:
 
         # Now let's fine tune it by looking at the imaginary parts
         imagpilots = np.array([])
-        for i in range(o1-searchrange,o1+searchrange):
+        for i in range(o1-searchrangefine,o1+searchrangefine):
             self.initDecode(signal,i)
             _,im = self.decode()
             imagpilots = np.append(imagpilots,im)
 
         # Correct it with the pilots
-        o2 = o1 + np.argmin(imagpilots) - searchrange
+        o2 = o1 + np.argmin(imagpilots) - searchrangefine
         return crosscorr,imagpilots,o2

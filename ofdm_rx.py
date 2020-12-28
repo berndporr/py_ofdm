@@ -35,7 +35,7 @@ fs,signal = wavfile.read('ofdm8000.wav')
 print("fs =",fs)
 
 searchRangeForPilotPeak = 25
-cc,sumofimag,offset = ofdm.findSymbolStartIndex(signal, searchrange = searchRangeForPilotPeak)
+cc,sumofimag,offset = ofdm.findSymbolStartIndex(signal, searchrangefine = searchRangeForPilotPeak)
 plt.figure(1)
 plt.title("Cross correlation to find the cyclic prefix")
 plt.xlabel("Sample index")
