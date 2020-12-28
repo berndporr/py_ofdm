@@ -174,7 +174,11 @@ class OFDM:
         # counter for the pilots
         pilot_counter = self.pilot_distance/2
 
+        # the byte array storing the received data
         data = np.zeros(nData)
+
+        # sum of the imaginary parts of the pilot tones
+        imPilots = 0
 
         # we loop through one line in the image
         for x in range(nData):
@@ -188,6 +192,7 @@ class OFDM:
                 pilot_counter = pilot_counter - 1
                 if pilot_counter == 0:
                     pilot_counter = self.pilot_distance
+                    imPilots = imPilots + np.abs(np.imag(isymbol[k]))
                     k = k + 1
                     if not (k < self.nIFFT):
                         k = 0
@@ -217,4 +222,4 @@ class OFDM:
 
             # store it in the image
             data[x] = greyvalue
-        return data
+        return data,imPilots

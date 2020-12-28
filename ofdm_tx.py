@@ -61,7 +61,7 @@ ofdm.initDecode(signal,offset)
 
 # loop for the y coordinate
 for y in range(ymax):
-    row = ofdm.decode(xmax)
+    row,i = ofdm.decode(xmax)
     rx_image[y,:] = row
 
 plt.figure(2)
