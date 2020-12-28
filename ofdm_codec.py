@@ -23,9 +23,12 @@ import random
 
 class OFDM:
 
-    def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2):
+    def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256):
         # our inverse FFT has 2048 frequencied
         self.nIFFT = nFreqSamples
+
+        # number of data samples
+        self.nData = nData
 
         # the cyclic prefix is a 1/4 of the length of the symbol
         self.nCyclic = int(self.nIFFT*2/4)
@@ -66,7 +69,7 @@ class OFDM:
         pilot_counter = self.pilot_distance/2
         
         # we loop through one line in the image
-        for x in range(len(data)):
+        for x in range(self.nData):
 
             # get the grey value
             greyvalue = int(data[x])
@@ -147,7 +150,7 @@ class OFDM:
         self.rxindex = offset
         self.signal = signal
 
-    def decode(self,nData):
+    def decode(self):
         # skip cyclic prefix
         self.rxindex = self.rxindex + self.nCyclic
 
@@ -175,13 +178,13 @@ class OFDM:
         pilot_counter = self.pilot_distance/2
 
         # the byte array storing the received data
-        data = np.zeros(nData)
+        data = np.zeros(self.nData)
 
         # sum of the imaginary parts of the pilot tones
         imPilots = 0
 
         # we loop through one line in the image
-        for x in range(nData):
+        for x in range(self.nData):
 
             # decode one byte from 4 bytes in the FFT
             # we first create an array which contains the bits in separate rows
@@ -223,3 +226,26 @@ class OFDM:
             # store it in the image
             data[x] = greyvalue
         return data,imPilots
+
+
+    def findSymbolStartIndex(self, signal, searchrange = 25):
+        # Let find the starting index with the cyclic prefix
+        crosscorr = np.array([])
+        for i in range(self.nIFFT*5):
+            s1 = signal[i:i+self.nCyclic]
+            s2 = signal[i+self.nIFFT*2:i+self.nIFFT*2+self.nCyclic]
+            cc = np.correlate(s1,s2)
+            crosscorr = np.append(crosscorr,cc)
+
+        o1 = np.argmax(crosscorr)
+
+        # Now let's fine tune it by looking at the imaginary parts
+        imagpilots = np.array([])
+        for i in range(o1-searchrange,o1+searchrange):
+            self.initDecode(signal,i)
+            _,im = self.decode()
+            imagpilots = np.append(imagpilots,im)
+
+        # Correct it with the pilots
+        o2 = o1 + np.argmin(imagpilots) - searchrange
+        return crosscorr,imagpilots,o2

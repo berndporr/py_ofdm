@@ -34,36 +34,19 @@ ofdm = ofdm_codec.OFDM()
 fs,signal = wavfile.read('ofdm8000.wav')
 print("fs =",fs)
 
-
-# Let find the starting index with the cyclic prefix
-crosscorr = np.array([])
-# let's find the offset
-for i in range(ofdm.nIFFT*5):
-    s1 = signal[i:i+ofdm.nCyclic]
-    s2 = signal[i+ofdm.nIFFT*2:i+ofdm.nIFFT*2+ofdm.nCyclic]
-    cc = np.correlate(s1,s2)
-    crosscorr = np.append(crosscorr,cc)
-
-o1 = np.argmax(crosscorr)
-print("1st guess for max index =",o1)
+searchRangeForPilotPeak = 25
+cc,sumofimag,offset = ofdm.findSymbolStartIndex(signal, searchrange = searchRangeForPilotPeak)
 plt.figure(1)
-plt.plot(crosscorr)
+plt.title("Cross correlation to find the cyclic prefix")
+plt.xlabel("Sample index")
+plt.ylabel("Cross correlation")
+plt.plot(cc)
 
-offset = o1
-
-# Now let's fine tune it by looking at the imaginary parts
-
-imagpilots = np.array([])
-searchrange = 25
-for i in range(o1-searchrange,o1+searchrange):
-    ofdm.initDecode(signal,i)
-    row,im = ofdm.decode(xmax)
-    imagpilots = np.append(imagpilots,im)
-
-o2 = o1 + np.argmin(imagpilots) - searchrange
-print("Final offset corrected for errors =",o2)
 plt.figure(2)
-plt.plot(imagpilots)
+plt.title("Sum of the abs of the imaginary parts of the pilots")
+plt.xlabel("Relative sample index")
+plt.ylabel("Sum(abs(imag(pilots)))")
+plt.plot(np.arange(-searchRangeForPilotPeak,searchRangeForPilotPeak),sumofimag)
 
 ofdm.initDecode(signal,offset)
 
@@ -72,7 +55,7 @@ rx_image = np.empty((ymax,xmax))
 
 # loop for the y coordinate
 for y in range(ymax):
-    row,i = ofdm.decode(xmax)
+    row,i = ofdm.decode()
     rx_image[y,:] = row
 
 plt.figure(3)
