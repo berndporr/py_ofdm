@@ -28,6 +28,7 @@ a = cv2.imread('greytee.png',cv2.IMREAD_GRAYSCALE)
 
 # the number of lines in the image
 ymax,xmax= np.shape(a)
+print(xmax,ymax)
 
 ofdm = ofdm_codec.OFDM()
 
@@ -52,7 +53,6 @@ plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
 
 #######################################################################
 # reception
-import random
 
 # our image
 rx_image = np.empty((ymax,xmax))
