@@ -21,6 +21,7 @@ import cv2
 import numpy as np
 import scipy.io.wavfile as wavfile
 import matplotlib.pyplot as plt
+import matplotlib.colors as mcolors
 import ofdm_codec
 
 # geometry of the expected image
@@ -36,11 +37,15 @@ print("fs =",fs)
 
 searchRangeForPilotPeak = 25
 cc,sumofimag,offset = ofdm.findSymbolStartIndex(signal, searchrangefine = searchRangeForPilotPeak)
+
+print("Symbol start sample index =",offset)
+
 plt.figure(1)
 plt.title("Cross correlation to find the cyclic prefix")
 plt.xlabel("Sample index")
 plt.ylabel("Cross correlation")
 plt.plot(cc)
+plt.axvline(x=offset,color=mcolors.BASE_COLORS['g'])
 
 plt.figure(2)
 plt.title("Sum of the abs of the imaginary parts of the pilots")

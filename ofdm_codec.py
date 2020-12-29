@@ -23,6 +23,7 @@ OFDM transmitter and receiver with energy dispersal, pilot tones and cyclic pref
 
 import numpy as np
 import random
+import scipy.signal
 
 class OFDM:
     def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256):
@@ -265,7 +266,7 @@ class OFDM:
         """
         # Set it to some default
         if not searchrangecoarse:
-            searchrangecoarse = self.nIFFT*5
+            searchrangecoarse = self.nIFFT*10
             
         # Let find the starting index with the cyclic prefix
         crosscorr = np.array([])
@@ -275,7 +276,8 @@ class OFDM:
             cc = np.correlate(s1,s2)
             crosscorr = np.append(crosscorr,cc)
 
-        o1 = np.argmax(crosscorr)
+        pks,_ = scipy.signal.find_peaks(crosscorr,distance=self.nIFFT*2)
+        o1 = pks[0]
 
         # Now let's fine tune it by looking at the imaginary parts
         imagpilots = np.array([])
