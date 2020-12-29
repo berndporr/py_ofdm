@@ -26,20 +26,24 @@ import random
 import scipy.signal
 
 class OFDM:
-    def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256):
+    def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256, nCyclic = None):
         """
         nFreqSamples sets the number of frequency coefficients of the FFT. Pilot tones are injected
         every pilotDistanceInSamples-th frequency sample. The real valued pilot amplitude is pilotAmplitude.
-        For transmission nData bytes are expected in an array.
+        For transmission nData bytes are expected in an array. The length of the Cyclic prefix is the number
+        of the real valued transmission samples.
         """
-        # our inverse FFT has 2048 frequencied
+        # the total number of frequency samples
         self.nIFFT = nFreqSamples
 
-        # number of data samples
+        # number of data samples in bytes (coded/decoded)
         self.nData = nData
 
-        # the cyclic prefix is a 1/4 of the length of the symbol
-        self.nCyclic = int(self.nIFFT*2/4)
+        if nCyclic:
+            self.nCyclic = nCyclic
+        else:
+            # the default cyclic prefix is a 1/4 of the length of the symbol
+            self.nCyclic = int(self.nIFFT * 2 / 4)
 
         # distance between pilots	
         self.pilot_distance = pilotDistanceInSamples
@@ -47,8 +51,9 @@ class OFDM:
         # amplitudes of the pilot carrier at the beginning
         self.pilot_amplitude = pilotAmplitude
 
-        # first k index used
-        self.k_start = int(self.nIFFT/2 + self.nIFFT/4 - self.nIFFT / self.pilot_distance / 4)
+        # First frequency coefficient index used
+        # We assume that the spectrum is centred symmetrically around DC and depends on nData
+        self.k_start = int(self.nIFFT - self.nIFFT / self.pilot_distance / 2 - nData * 4 / 2)
 
     def encode(self,signal,data,randomSeed = 1):
         """
@@ -59,12 +64,10 @@ class OFDM:
         engergy dispersal.
         """
         # create an empty spectrum with all complex frequency values set to zero
-        spectrum = np.zeros(self.nIFFT,dtype=complex)
+        self.spectrum = np.zeros(self.nIFFT,dtype=complex)
 
         # we start with a negative frequency and then
         # work ourselves up to positive ones
-        # we have 2048 frequency samples and 1024 frequencies we use for the
-        # image
         k = self.k_start
         
         # set the random number generator to a known start value
@@ -73,28 +76,22 @@ class OFDM:
         # generate a pseudo random sequence which is called "engery dispersal".
         random.seed(randomSeed)
         
-        # pilot signal, make it stronger than the payload data
-        # so that it's easy to recognise
-        # we can use it to fine tune the symbol start in the receiver
-        # However, only one pilot won't be enough in a real receiver
-        # because of its periodic nature. We need to scatter them
-        # over the spectrum.
-        
         # counter for the pilots
         pilot_counter = self.pilot_distance/2
         
-        # we loop through one line in the image
+        # we loop through the data
         for x in range(self.nData):
 
-            # get the grey value
+            # get one byte
             greyvalue = int(data[x])
-            # greyvalue = int(x % 255)
-            # generate the random number
+
+            # Energy dispersal
+            # Generate the random number
             r = int(random.randint(0,255))
             # xor the grey value with the random number
             greyvalue = int(greyvalue ^ r)
 
-            # create the bitstream
+            # Create the bitstream from the byte
             bitstream = np.zeros(8)
             for bit in range(8):
                 m = 1 << bit
@@ -111,27 +108,27 @@ class OFDM:
                 pilot_counter = pilot_counter - 1
                 if pilot_counter == 0:
                     pilot_counter = self.pilot_distance
-                    spectrum[k] = self.pilot_amplitude
+                    self.spectrum[k] = self.pilot_amplitude
                     k = k + 1
                     if not (k < self.nIFFT):
                         k = 0
-                spectrum[k] = complex(bitstream[int(cnum*2)],
-                                    bitstream[int(cnum*2+1)])
+                self.spectrum[k] = complex(bitstream[int(cnum*2)],
+                                           bitstream[int(cnum*2+1)])
                 # increase the frequency index
                 k = k + 1
                 # wrap to positive frequencies once we have reached the last index
                 if not (k < self.nIFFT):
                     k = 0
 
-        # create one symbol by transforming our frequency samples into
+        # Create one symbol by transforming our frequency samples into
         # complex timedomain samples
-        complex_symbol = np.fft.ifft(spectrum)
+        complex_symbol = np.fft.ifft(self.spectrum)
 
-        # create an empty real valued symbol with twice the samples
+        # Create an empty real valued symbol with twice the samples
         # because we need to interleave real and complex values
         tx_symbol = np.zeros(len(complex_symbol)*2)
 
-        # now we upsample at factor 2 and interleave
+        # Now we upsample at factor 2 and interleave
         # the I and Q signals
         # This is a digital quadrature modulator where we
         # interleave the complex signal c(n) as:
@@ -147,15 +144,15 @@ class OFDM:
             txindex = txindex + 1
             s = s * -1
 
-        # generate cyclic prefix taken from the end of the signal
+        # Generate cyclic prefix taken from the end of the signal
         # This is now twice the length because we have two times
         # more samples, effectively transmitting at twice the
         # sampling rate
         cyclicPrefix = tx_symbol[-self.nCyclic:]
 
-        # add the cyclic prefix to the signal
+        # Add the cyclic prefix to the signal
         signal = np.concatenate((signal,cyclicPrefix))
-        # add the real valued symbol to the signal
+        # Add the real valued symbol to the signal
         signal = np.concatenate((signal,tx_symbol))
         return signal
 
@@ -177,11 +174,13 @@ class OFDM:
         the symbol start detection, the reception and the jitter 
         (theoretically zero at perfect reception).
         """
-        # skip cyclic prefix
+        # Skip cyclic prefix
         self.rxindex = self.rxindex + self.nCyclic
 
+        # The complex symbol in the time domain
         rx_symbol = np.zeros(self.nIFFT,dtype=complex)
-        # demodulate
+        
+        # Demodulate the signal with the Nyquist quadrature demodulator
         for a in range(self.nIFFT):
             realpart = self.s * self.signal[self.rxindex]
             self.rxindex = self.rxindex + 1
@@ -190,7 +189,7 @@ class OFDM:
             rx_symbol[a] = complex(realpart,imagpart)
             self.s = self.s * -1
 
-        # perform a FFT to get the frequency samples which code our signal as QPSK pairs
+        # Perform an FFT to get the frequency samples which code our signal as QPSK pairs
         isymbol = np.fft.fft(rx_symbol)
 
         # set the random number generator to the same value as in the transmitter so that

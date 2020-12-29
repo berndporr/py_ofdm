@@ -52,6 +52,10 @@ plt.title("TX OFDM spectrum")
 plt.xlabel("Normalised frequencies")
 plt.ylabel("Freq-amplitudes")
 plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
+
+plt.figure(2)
+plt.title("OFDM complex sprectrum")
+plt.plot(np.abs(ofdm.spectrum))
 #plt.show()
 
 #######################################################################
@@ -68,6 +72,6 @@ for y in range(ymax):
     row,i = ofdm.decode()
     rx_image[y,:] = row
 
-plt.figure(2)
+plt.figure(3)
 plt.imshow(rx_image, cmap='gray')
 plt.show()
