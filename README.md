@@ -15,10 +15,14 @@ Every line of the image turns into a symbol. Thus we have
 
 ### Transmission
 
+![alt tag](tx.png)
+
 Run `ofdm_tx.py`. This creates a wav file with the whole
 image as OFDM encoded. You can listen to it!
 
 ### Reception
+
+![alt tag](rx.png)
 
 Run `ofdm_rx.py`. This then detects the start of the 1st symbol
 1st with the cyclic prefix and then fine tunes it with the pilots.

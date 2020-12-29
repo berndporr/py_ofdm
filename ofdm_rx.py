@@ -40,14 +40,14 @@ cc,sumofimag,offset = ofdm.findSymbolStartIndex(signal, searchrangefine = search
 
 print("Symbol start sample index =",offset)
 
-plt.figure(1)
+plt.subplot(131)
 plt.title("Cross correlation to find the cyclic prefix")
 plt.xlabel("Sample index")
 plt.ylabel("Cross correlation")
 plt.plot(cc)
 plt.axvline(x=offset,color=mcolors.BASE_COLORS['g'])
 
-plt.figure(2)
+plt.subplot(132)
 plt.title("Sum of the abs of the imaginary parts of the pilots")
 plt.xlabel("Relative sample index")
 plt.ylabel("Sum(abs(imag(pilots)))")
@@ -63,6 +63,7 @@ for y in range(ymax):
     row,i = ofdm.decode()
     rx_image[y,:] = row
 
-plt.figure(3)
+plt.subplot(133)
+plt.title("Decoded image")
 plt.imshow(rx_image, cmap='gray')
 plt.show()

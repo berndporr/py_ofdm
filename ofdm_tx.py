@@ -47,16 +47,15 @@ for y in range(ymax):
 # save it as a wav file to listen to
 wavfile.write('ofdm8000.wav',8000,signal)
 
-plt.figure(1)
+plt.subplot(131)
+plt.title("OFDM complex sprectrum")
+plt.plot(np.abs(ofdm.spectrum))
+
+plt.subplot(132)
 plt.title("TX OFDM spectrum")
 plt.xlabel("Normalised frequencies")
 plt.ylabel("Freq-amplitudes")
 plt.plot(np.linspace(0,1,len(signal)),np.abs(np.fft.fft(signal))/len(signal))
-
-plt.figure(2)
-plt.title("OFDM complex sprectrum")
-plt.plot(np.abs(ofdm.spectrum))
-#plt.show()
 
 #######################################################################
 # reception
@@ -72,6 +71,6 @@ for y in range(ymax):
     row,i = ofdm.decode()
     rx_image[y,:] = row
 
-plt.figure(3)
+plt.subplot(133)
 plt.imshow(rx_image, cmap='gray')
 plt.show()

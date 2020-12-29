@@ -19,8 +19,6 @@ OFDM transmitter and receiver with energy dispersal, pilot tones and cyclic pref
 #	along with this program; if not, write to the Free Software
 #	Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
-#       using more than one pilots to eliminate ambiguities.
-
 import numpy as np
 import random
 import scipy.signal
@@ -83,19 +81,19 @@ class OFDM:
         for x in range(self.nData):
 
             # get one byte
-            greyvalue = int(data[x])
+            databyte = int(data[x])
 
             # Energy dispersal
             # Generate the random number
             r = int(random.randint(0,255))
             # xor the grey value with the random number
-            greyvalue = int(greyvalue ^ r)
+            databyte = int(databyte ^ r)
 
             # Create the bitstream from the byte
             bitstream = np.zeros(8)
             for bit in range(8):
                 m = 1 << bit
-                testbit = m & greyvalue
+                testbit = m & databyte
                 if testbit > 0:
                     bitstream[bit] = 1
                 else:
@@ -236,20 +234,20 @@ class OFDM:
 
             # now let's assemble the bits into into a proper byte by
             # using bit-wise or
-            greyvalue = 0
+            databyte = 0
 
             # let's loop through the bits
             for bit in range(8):
                 mask = 1 << bit
                 if (bitstream[bit] > 0):
-                    greyvalue = int(mask | int(greyvalue))
+                    databyte = int(mask | int(databyte))
 
             # de-scramble the byte
             r = int(random.randint(0,255))
-            greyvalue = greyvalue ^ r
+            databyte = databyte ^ r
 
             # store it in the image
-            data[x] = greyvalue
+            data[x] = databyte
         return data,imPilots
 
 
