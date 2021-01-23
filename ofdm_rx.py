@@ -33,6 +33,9 @@ ofdm = ofdm_codec.OFDM()
 
 # OFDM reception as audio file
 fs,signal = wavfile.read('ofdm8000.wav')
+# so that the search algorithm is happy
+signal = np.append(signal,np.zeros(ofdm.nIFFT*2))
+
 print("fs =",fs)
 
 searchRangeForPilotPeak = 25
