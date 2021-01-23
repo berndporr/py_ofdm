@@ -24,6 +24,14 @@ import random
 import scipy.signal
 
 class OFDM:
+    """
+    OFDM encoder and decoder. The data is encoded as 4-QAM so two bits per frequency sample. Energy
+    dispersal is done with a pre-seeded random number generator. Both pilot tones
+    and the cyclic prefix are added so that the start of the symbol can be detected at the receiver. 
+    The complex time series after the inverse Fourier Transform is modulated into a real valued stream 
+    with a Nyquist quadrature modulator. On the receiver side the start of the symbol is detected by
+    first doing a coarse search with the cyclic prefix and then a precision alignment with the pilots.
+    """
     def __init__(self, nFreqSamples = 2048, pilotDistanceInSamples = 16, pilotAmplitude = 2, nData = 256, nCyclic = None):
         """
         nFreqSamples sets the number of frequency coefficients of the FFT. Pilot tones are injected
@@ -164,7 +172,7 @@ class OFDM:
         self.rxindex = offset
         self.signal = signal
 
-    def decode(self):
+    def decode(self, randomSeed = 1):
         """
         Decodes one symbol and returns a byte array of the
         data and the absolute values of the imaginary parts
@@ -192,7 +200,7 @@ class OFDM:
 
         # set the random number generator to the same value as in the transmitter so that
         # we have exactly the same sequence
-        random.seed(1)
+        random.seed(randomSeed)
 
         # we start at frequency index k_start
         k = self.k_start
