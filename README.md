@@ -1,9 +1,9 @@
+This repo has been moved. Please check out version 2.x here: 
+https://github.com/dchutchings/py_ofdm
+
 # Python OFDM transmitter and receiver
 
 Features: Nyquist quadrature modulator, pilot tones and cyclic prefix.
-
-This repo has moved. Please check out version 2.x here: 
-https://github.com/dchutchings/py_ofdm
 
 ## OFDM class
 
