@@ -7,11 +7,11 @@ with open('README_pypi.rst') as f:
 
 setup(
     name='pyofdm',
-    version='2.1.1',
+    version='2.1.2',
     description="OFDM transmitter and receiver",
     long_description=long_description,
     author='Bernd Porr, David Hutchings',
-    author_email='mail@berndporr.me.uk, David.Hutchings@glasgow.ac.uk',
+    author_email='Bernd.Porr@glasgow.ac.uk, David.Hutchings@glasgow.ac.uk',
     packages=['pyofdm'],
     include_package_data=True,
     install_requires=['komm'],
