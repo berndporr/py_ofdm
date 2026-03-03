@@ -83,10 +83,15 @@ class OFDM:
             norm = norm + i**2
         self.norm = np.sqrt(norm*2**(2-mQAM//2))
         
-        # use komm open-source library for QAM mod/demod 
-        # pypi.org/project/komm 
-        # by Roberto W. Nobrega <rwnobrega@gmail.com>
-        self.qam = komm.QAModulation(2**self.mQAM,base_amplitudes=1./self.norm)
+        """
+        use komm open-source library for QAM mod/demod 
+        pypi.org/project/komm 
+        by Roberto W. Nobrega <rwnobrega@gmail.com>
+        requires komm v.0.26.1 or later
+        """
+        # self.qam = komm.QAModulation(2**self.mQAM,base_amplitudes=1./self.norm)
+        self.constellation = komm.QAMConstellation(2**self.mQAM, deltas=2./self.norm)
+        self.labeling = komm.ReflectedRectangularLabeling(self.mQAM)
         
         self.kstart = (8*self.nData//self.mQAM+self.pilotIndices.size)//2
 
@@ -109,7 +114,9 @@ class OFDM:
         rints = np.uint8(rng.integers(256,size=self.nData))
         data = data ^ rints
         bin_data = np.unpackbits(data).flatten()
-        tx_data = self.qam.modulate(bin_data)
+        #tx_data = self.qam.modulate(bin_data)
+        tx_indices = self.labeling.bits_to_indices(bin_data)
+        tx_data = self.constellation.indices_to_symbols(tx_indices)
       
         # create an empty spectrum with all complex frequency values set to zero
         self.spectrum = np.zeros(self.nIFFT,dtype=complex)
@@ -191,7 +198,9 @@ class OFDM:
                 imPilots += np.imag(rx_freqs[k])**2 
                 ipilot+=1  
                 
-        rx_bin = self.qam.demodulate_hard(rx_data)
+        #rx_bin = self.qam.demodulate_hard(rx_data)
+        rx_indices = self.constellation.closest_indices(rx_data)
+        rx_bin = self.labeling.indices_to_bits(rx_indices)
        
         # now let's assemble the bits into into bytes
         rx_byte = np.packbits(rx_bin)
